@@ -1,0 +1,89 @@
+import numpy as np
+
+class Activation:
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
+
+class Neuron:
+    def __init__(self, num_inputs):
+        self.weights = np.random.rand(num_inputs)
+        self.bias = np.random.rand()
+
+class Layer:
+    def __init__(self, num_neurons, num_inputs):
+        self.neurons = [Neuron(num_inputs) for _ in range(num_neurons)]
+        self.output = None
+
+class Parameters:
+    def __init__(self):
+        self.learning_rate = 0.01
+
+class Model:
+    def __init__(self, input_size, hidden_size, output_size):
+        self.input_layer = Layer(input_size, input_size)
+        self.hidden_layer = Layer(hidden_size, input_size)
+        self.output_layer = Layer(output_size, hidden_size)
+        self.activation = Activation()
+        self.parameters = Parameters()
+
+class LossFunction:
+    def mean_squared_error(self, y_true, y_pred):
+        return np.mean((y_true - y_pred) ** 2)
+
+class ForwardProp:
+    @staticmethod
+    def forward(model, inputs):
+        input_layer_output = np.array(inputs)
+        hidden_layer_output = np.dot(model.hidden_layer.weights, input_layer_output) + model.hidden_layer.bias
+        hidden_layer_output = model.activation.sigmoid(hidden_layer_output)
+
+        output_layer_output = np.dot(model.output_layer.weights, hidden_layer_output) + model.output_layer.bias
+        output_layer_output = model.activation.sigmoid(output_layer_output)
+
+        model.input_layer.output = input_layer_output
+        model.hidden_layer.output = hidden_layer_output
+        model.output_layer.output = output_layer_output
+
+class BackProp:
+    @staticmethod
+    def backward(model, y_true):
+        output_error = y_true - model.output_layer.output
+        output_delta = output_error * model.activation.sigmoid_derivative(model.output_layer.output)
+
+        hidden_error = np.dot(model.output_layer.weights.T, output_delta)
+        hidden_delta = hidden_error * model.activation.sigmoid_derivative(model.hidden_layer.output)
+
+        model.output_layer.weights += model.parameters.learning_rate * np.outer(output_delta, model.hidden_layer.output)
+        model.output_layer.bias += model.parameters.learning_rate * output_delta
+
+        model.hidden_layer.weights += model.parameters.learning_rate * np.outer(hidden_delta, model.input_layer.output)
+        model.hidden_layer.bias += model.parameters.learning_rate * hidden_delta
+
+class GradDescent:
+    @staticmethod
+    def train(model, inputs, targets, epochs):
+        for epoch in range(epochs):
+            ForwardProp.forward(model, inputs)
+            BackProp.backward(model, targets)
+
+class Training:
+    @staticmethod
+    def train_and_evaluate(model, inputs, targets, epochs):
+        GradDescent.train(model, inputs, targets, epochs)
+        ForwardProp.forward(model, inputs)
+        loss = LossFunction().mean_squared_error(targets, model.output_layer.output)
+        print(f"Final Loss: {loss}")
+
+# Example usage:
+input_size = 3
+hidden_size = 4
+output_size = 1
+
+nn_model = Model(input_size, hidden_size, output_size)
+training_data = np.array([[0, 0, 1], [0, 1, 1], [1, 0, 1], [1, 1, 1]])
+target_data = np.array([[0], [1], [1], [0]])
+
+Training.train_and_evaluate(nn_model, training_data, target_data, epochs=10000)
